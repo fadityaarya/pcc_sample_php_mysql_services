@@ -16,15 +16,43 @@ Source code PHP berada di folder `htdocs` dan document root Caddy mengarah ke fo
 
 ## Konfigurasi
 
-File `.env` hanya berisi kredensial MySQL:
+File `.env` berisi kredensial MySQL. Konfigurasi Google Authenticator bersifat
+opsional karena secret dan account dapat dibuat otomatis:
 
 ```dotenv
 MYSQL_USER=app
 MYSQL_PASSWORD=app_secret
 MYSQL_ROOT_PASSWORD=root_secret
+# GOOGLE2FA_SECRET=isi_secret_base32_persisten_jika_diperlukan
+# GOOGLE2FA_ACCOUNT=admin@localhost
+GOOGLE2FA_ISSUER='Products API'
 ```
 
 Ubahlah nilai tersebut sebelum digunakan di lingkungan production.
+
+## Instalasi Composer dan Library
+
+Library API autentikasi didefinisikan di `htdocs/composer.json`:
+
+- `pragmarx/google2fa`: membuat dan memverifikasi kode TOTP Google Authenticator.
+- `bacon/bacon-qr-code`: membuat QR code SVG untuk setup authenticator.
+
+Pada penggunaan Docker, dependency di-install otomatis saat image PHP dibuat:
+
+```bash
+docker compose build --no-cache php
+docker compose up -d
+```
+
+Untuk meng-install atau memperbarui dependency pada container yang sudah
+berjalan:
+
+```bash
+docker compose run --rm php composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+```
+
+Dependency disimpan pada volume `php-vendor-v2`, sedangkan secret otomatis
+disimpan pada volume `php-data`.
 
 ## Menjalankan Service
 
@@ -151,6 +179,53 @@ curl -X PATCH http://localhost:8080/products/1 \
 curl -X DELETE http://localhost:8080/products/1
 ```
 
+## Login Google Authenticator
+
+### 1. Membuat konfigurasi authenticator
+
+Jalankan service, lalu panggil endpoint berikut:
+
+```http
+GET http://localhost:8080/login
+```
+
+Response berisi `secret`, `account`, `issuer`, `otp_auth_url`, dan `qr_code`.
+Tambahkan akun tersebut ke aplikasi Google Authenticator dengan salah satu cara:
+
+- Scan nilai `qr_code` sebagai QR code SVG.
+- Pilih **Enter setup key** di Google Authenticator, lalu masukkan nilai
+  `secret` dan gunakan tipe **Time-based**.
+
+Jika `GOOGLE2FA_SECRET` tidak diisi, aplikasi membuat secret 32 karakter secara
+otomatis pada request pertama dan menyimpannya secara persisten di volume
+`php-data`. Secret yang sudah tersimpan dan panjangnya kurang dari 32 karakter
+akan dibuat ulang.
+
+### 2. Verifikasi kode login
+
+Ambil kode 6 digit dari Google Authenticator, lalu kirim request berikut:
+
+```bash
+curl -X POST http://localhost:8080/login \
+  -H 'Content-Type: application/json' \
+  -d '{"code":"123456"}'
+```
+
+Response berhasil:
+
+```json
+{
+  "authenticated": true,
+  "message": "Authentication successful."
+}
+```
+
+Di Postman, gunakan `POST /login`, pilih **Body > raw > JSON**, lalu kirim
+`{"code":"123456"}`. Ganti kode contoh dengan kode aktif dari authenticator.
+
+Endpoint login saat ini memverifikasi TOTP, tetapi belum membuat JWT atau
+session token untuk membatasi endpoint produk.
+
 ## Login phpMyAdmin
 
 Buka `http://localhost:8081`, lalu gunakan:
@@ -171,6 +246,14 @@ services/
 ├── docker-compose.yaml
 ├── databases/
 └── htdocs/
+  ├── Config.php
+  ├── Rest.php
+  ├── composer.json
+  ├── controller/
+  │   ├── AuthController.php
+  │   └── ProductController.php
     ├── index.php
+  ├── models/
+  ├── routes/
     └── seed.php
 ```

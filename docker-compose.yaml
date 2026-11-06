@@ -6,6 +6,8 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./htdocs:/var/www/html
+      - php-vendor-v2:/var/www/html/vendor
+      - php-data:/var/www/data
     environment:
       APP_ENV: local
       DB_HOST: mysql
@@ -95,6 +97,8 @@ services:
       - app-network
 
 volumes:
+  php-data:
+  php-vendor-v2:
   caddy-data:
   caddy-config:
   rabbitmq-data:

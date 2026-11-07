@@ -11,9 +11,9 @@
 /data/*
 
 # htdocs data
-/htdocs/*
-!/htdocs/.gitkeep
-/htdocs/.google2fa_secret
+# /htdocs/*
+# !/htdocs/.gitkeep
+# /htdocs/.google2fa_secret
 
 # Docker overrides and local files
 docker-compose.override.yml

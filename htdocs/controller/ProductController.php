@@ -67,7 +67,7 @@ final class ProductController
 
     public function index(): void
     {
-        $limit = min(max((int) ($_GET['limit'] ?? 500), 0), 1000);
+        $limit = min(max((int) ($_GET['limit'] ?? 30), 0), 1000);
         $skip = max((int) ($_GET['skip'] ?? 0), 0);
         $search = trim((string) ($_GET['q'] ?? ''));
         $category = trim((string) ($_GET['category'] ?? ''));
@@ -141,14 +141,12 @@ final class ProductController
 
     public function destroy(int $id): void
     {
-        $stmt = $this->pdo->prepare('DELETE FROM products WHERE id = :id');
-        $stmt->execute([':id' => $id]);
-
-        if ($stmt->rowCount() > 0) {
-        respond(['success' => true, 'message' => 'Produk berhasil dihapus dari database.']);
-        } else {
-        fail('Produk tidak ditemukan.', 404);
-        }
+        $product = $this->find($id)->toArray();
+        $statement = $this->pdo->prepare('DELETE FROM products WHERE id = :id');
+        $statement->execute([':id' => $id]);
+        $product['isDeleted'] = true;
+        $product['deletedOn'] = gmdate('c');
+        respond($product);
     }
 
     private function find(int $id): Product

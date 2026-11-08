@@ -10,7 +10,7 @@ require_once __DIR__ . '/controller/ProductController.php';
 require_once __DIR__ . '/routes/api.php';
 
 try {
-    $authController = new AuthController(Config::database());
+    $authController = new AuthController();
     $controller = new ProductController(Config::database());
     $controller->initialiseDatabase();
     registerApiRoutes($controller, $authController);
